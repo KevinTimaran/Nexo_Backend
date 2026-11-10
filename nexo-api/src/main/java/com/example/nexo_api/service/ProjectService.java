@@ -7,12 +7,62 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.nio.file.*;
+import java.io.IOException;
+import tools.jackson.databind.ObjectMapper;
 
 @Service
 public class ProjectService {
 
     private final Map<String, Project> projects = new ConcurrentHashMap<>();
     private final Map<String, Workspace> workspaces = new ConcurrentHashMap<>();
+    private final ObjectMapper mapper = new ObjectMapper();
+    private final Path dataFile;
+
+    public ProjectService() {
+        this(Path.of(Optional.ofNullable(System.getenv("NEXO_DATA_FILE"))
+                .filter(value -> !value.isBlank())
+                .orElseGet(() -> Path.of(System.getProperty("user.home"), ".nexo", "data.json").toString())));
+    }
+
+    public ProjectService(Path dataFile) { this.dataFile = dataFile.toAbsolutePath(); }
+
+    public static class RevisionConflictException extends RuntimeException {
+        private final Workspace current;
+        public RevisionConflictException(Workspace current) { this.current = current; }
+        public Workspace getCurrent() { return current; }
+    }
+
+    public static class PersistedData {
+        public Map<String, Project> projects = new HashMap<>();
+        public Map<String, Workspace> workspaces = new HashMap<>();
+    }
+
+    private synchronized void persist() { persistSnapshot(projects, workspaces); }
+
+    private void persistSnapshot(Map<String, Project> projectSnapshot, Map<String, Workspace> workspaceSnapshot) {
+        try {
+            Files.createDirectories(dataFile.getParent());
+            PersistedData data = new PersistedData();
+            data.projects.putAll(projectSnapshot);
+            data.workspaces.putAll(workspaceSnapshot);
+            Path temporary = Files.createTempFile(dataFile.getParent(), "nexo-", ".tmp");
+            try {
+                mapper.writeValue(temporary.toFile(), data);
+                try { Files.move(temporary, dataFile, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING); }
+                catch (AtomicMoveNotSupportedException ex) { Files.move(temporary, dataFile, StandardCopyOption.REPLACE_EXISTING); }
+            } finally { Files.deleteIfExists(temporary); }
+        } catch (IOException ex) { throw new IllegalStateException("No se pudo guardar el proyecto", ex); }
+    }
+
+    private synchronized void loadPersisted() {
+        if (!Files.exists(dataFile)) return;
+        try {
+            PersistedData data = mapper.readValue(dataFile.toFile(), PersistedData.class);
+            projects.clear(); projects.putAll(data.projects);
+            workspaces.clear(); workspaces.putAll(data.workspaces);
+        } catch (Exception ex) { throw new IllegalStateException("No se pudo leer el archivo de proyectos", ex); }
+    }
 
     @PostConstruct
     public void initSeedData() {
@@ -97,6 +147,7 @@ public class ProjectService {
                 "¿Cómo ayudar a personas sin recursos a entender términos legales?"));
 
         workspaces.put(legalAid.getId(), new Workspace(legalAid, new ConceptMap(laNodes, laRelations), laMessages));
+        loadPersisted();
     }
 
     public List<Project> listProjects(String lang, String status, String search) {
@@ -118,7 +169,7 @@ public class ProjectService {
         return list;
     }
 
-    public Project createProject(NewProjectRequest request) {
+    public synchronized Project createProject(NewProjectRequest request) {
         String id = "p-" + UUID.randomUUID().toString().substring(0, 8);
         String name = request.getName() != null && !request.getName().isBlank() ? request.getName().trim() : "Nuevo Proyecto";
         String description = request.getDescription() != null ? request.getDescription().trim() : "";
@@ -131,6 +182,7 @@ public class ProjectService {
         // Initialize empty workspace
         Workspace workspace = new Workspace(project, new ConceptMap(new ArrayList<>(), new ArrayList<>()), new ArrayList<>());
         workspaces.put(id, workspace);
+        persist();
 
         return project;
     }
@@ -139,7 +191,7 @@ public class ProjectService {
         return projects.get(id);
     }
 
-    public Project updateProject(String id, Map<String, Object> updates) {
+    public synchronized Project updateProject(String id, Map<String, Object> updates) {
         Project p = projects.get(id);
         if (p == null) return null;
 
@@ -149,12 +201,14 @@ public class ProjectService {
         if (updates.containsKey("icon") && updates.get("icon") instanceof String s) p.setIcon(s);
 
         p.setUpdatedAt(Instant.now().toString());
+        persist();
         return p;
     }
 
-    public boolean deleteProject(String id) {
+    public synchronized boolean deleteProject(String id) {
         Project removed = projects.remove(id);
         workspaces.remove(id);
+        persist();
         return removed != null;
     }
 
@@ -170,21 +224,35 @@ public class ProjectService {
         return ws;
     }
 
-    public void saveWorkspace(String projectId, ConceptMap map, List<ChatMessage> messages) {
+    public synchronized Workspace saveWorkspace(String projectId, UpdateWorkspaceRequest request) {
         Project p = projects.get(projectId);
-        if (p == null) return;
+        if (p == null) return null;
 
-        Workspace ws = workspaces.get(projectId);
-        if (ws == null) {
-            ws = new Workspace(p, map != null ? map : new ConceptMap(), messages != null ? messages : new ArrayList<>());
-            workspaces.put(projectId, ws);
-        } else {
-            if (map != null) ws.setMap(map);
-            if (messages != null) ws.setMessages(messages);
-        }
+        if (request.getExpectedRevision() == null || request.getOperationId() == null || request.getOperationId().isBlank())
+            throw new IllegalArgumentException("expectedRevision y operationId son obligatorios");
+
+        Workspace existing = getWorkspace(projectId);
+        if (existing.getAppliedOperations().containsKey(request.getOperationId())) return existing;
+        if (existing.getRevision() != request.getExpectedRevision()) throw new RevisionConflictException(existing);
+        ConceptMap map = request.getMap();
+        List<ChatMessage> messages = request.getMessages();
+        Project nextProject = new Project(p.getId(), p.getName(), p.getDescription(), p.getStatus(), p.getIcon(), Instant.now().toString(), p.getNodeCount());
+        Workspace ws = new Workspace(nextProject, map != null ? map : existing.getMap(), messages != null ? messages : existing.getMessages());
+        ws.setDiscovery(request.getDiscovery() != null ? request.getDiscovery() : existing.getDiscovery());
+        ws.setRevision(existing.getRevision() + 1);
+        ws.setAppliedOperations(new LinkedHashMap<>(existing.getAppliedOperations()));
+        ws.getAppliedOperations().put(request.getOperationId(), ws.getRevision());
+        while (ws.getAppliedOperations().size() > 256) ws.getAppliedOperations().remove(ws.getAppliedOperations().keySet().iterator().next());
 
         int nodeCount = ws.getMap() != null && ws.getMap().getNodes() != null ? ws.getMap().getNodes().size() : 0;
-        p.setNodeCount(nodeCount);
-        p.setUpdatedAt(Instant.now().toString());
+        nextProject.setNodeCount(nodeCount);
+        Map<String, Project> nextProjects = new HashMap<>(projects);
+        Map<String, Workspace> nextWorkspaces = new HashMap<>(workspaces);
+        nextProjects.put(projectId, nextProject);
+        nextWorkspaces.put(projectId, ws);
+        persistSnapshot(nextProjects, nextWorkspaces);
+        projects.put(projectId, nextProject);
+        workspaces.put(projectId, ws);
+        return ws;
     }
 }

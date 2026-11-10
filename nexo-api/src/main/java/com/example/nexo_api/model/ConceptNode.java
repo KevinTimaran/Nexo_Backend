@@ -18,6 +18,19 @@ public class ConceptNode {
     private String phase;     // "planning", "execution", "validation"
     private String details;
     private List<String> tags;
+    private String semanticKey;
+    private String origin;
+    private String verification;
+    private List<String> sourceFactIds;
+    private String definitionVersion;
+    private List<String> manuallyEditedFields;
+    private String name;
+    private String desc;
+    private Double z;
+    private Double val;
+    private Double importance;
+    private Double relevanceScore;
+    private String group;
 
     public ConceptNode() {}
 
@@ -136,4 +149,30 @@ public class ConceptNode {
     public void setTags(List<String> tags) {
         this.tags = tags;
     }
+    public String getSemanticKey() { return semanticKey; }
+    public void setSemanticKey(String semanticKey) { this.semanticKey = semanticKey; }
+    public String getOrigin() { return origin; }
+    public void setOrigin(String origin) { this.origin = origin; }
+    public String getVerification() { return verification; }
+    public void setVerification(String verification) { this.verification = verification; }
+    public List<String> getSourceFactIds() { return sourceFactIds; }
+    public void setSourceFactIds(List<String> sourceFactIds) { this.sourceFactIds = sourceFactIds; }
+    public String getDefinitionVersion() { return definitionVersion; }
+    public void setDefinitionVersion(String definitionVersion) { this.definitionVersion = definitionVersion; }
+    public List<String> getManuallyEditedFields() { return manuallyEditedFields; }
+    public void setManuallyEditedFields(List<String> manuallyEditedFields) { this.manuallyEditedFields = manuallyEditedFields; }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+    public String getDesc() { return desc; }
+    public void setDesc(String desc) { this.desc = desc; }
+    public Double getZ() { return z; }
+    public void setZ(Double z) { this.z = z; }
+    public Double getVal() { return val; }
+    public void setVal(Double val) { this.val = val; }
+    public Double getImportance() { return importance; }
+    public void setImportance(Double importance) { this.importance = importance; }
+    public Double getRelevanceScore() { return relevanceScore; }
+    public void setRelevanceScore(Double relevanceScore) { this.relevanceScore = relevanceScore; }
+    public String getGroup() { return group; }
+    public void setGroup(String group) { this.group = group; }
 }

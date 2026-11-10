@@ -25,7 +25,9 @@ public class HealthController {
 
         Map<String, Object> components = new HashMap<>();
         Map<String, Object> neo4j = new HashMap<>();
-        neo4j.put("status", "UP");
+        // The application currently persists workspaces as JSON and does not use Neo4j.
+        // Keep the health contract honest until a real integration is configured and probed.
+        neo4j.put("status", "NOT_CONFIGURED");
         components.put("neo4j", neo4j);
         body.put("components", components);
 

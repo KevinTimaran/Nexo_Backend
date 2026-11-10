@@ -3,12 +3,16 @@ package com.example.nexo_api.model;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class Workspace {
     private Project project;
     private ConceptMap map = new ConceptMap();
     private List<ChatMessage> messages = new ArrayList<>();
+    private Map<String, Object> discovery;
+    private long revision;
+    private Map<String, Long> appliedOperations = new java.util.LinkedHashMap<>();
 
     public Workspace() {}
 
@@ -41,4 +45,11 @@ public class Workspace {
     public void setMessages(List<ChatMessage> messages) {
         this.messages = messages != null ? messages : new ArrayList<>();
     }
+
+    public Map<String, Object> getDiscovery() { return discovery; }
+    public void setDiscovery(Map<String, Object> discovery) { this.discovery = discovery; }
+    public long getRevision() { return revision; }
+    public void setRevision(long revision) { this.revision = revision; }
+    public Map<String, Long> getAppliedOperations() { return appliedOperations; }
+    public void setAppliedOperations(Map<String, Long> appliedOperations) { this.appliedOperations = appliedOperations != null ? appliedOperations : new java.util.LinkedHashMap<>(); }
 }

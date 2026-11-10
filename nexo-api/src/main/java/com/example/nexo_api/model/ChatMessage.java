@@ -2,6 +2,7 @@ package com.example.nexo_api.model;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import java.util.Map;
+import java.util.List;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class ChatMessage {
@@ -15,6 +16,16 @@ public class ChatMessage {
     private Boolean showExplanation;
     private Map<String, Object> insight;
     private Map<String, Object> actionableNode;
+    private Map<String, Object> ui;
+    private String eventId;
+    private String requestId;
+    private String questionnaireId;
+    private Map<String, Object> answers;
+    private String action;
+    private Boolean readyForStructuring;
+    private List<Map<String, Object>> discoveryQuestions;
+    private List<Map<String, Object>> dimensions;
+    private String chatPhase;
 
     public ChatMessage() {}
 
@@ -104,4 +115,30 @@ public class ChatMessage {
     public void setActionableNode(Map<String, Object> actionableNode) {
         this.actionableNode = actionableNode;
     }
+
+    public Map<String, Object> getUi() {
+        return ui;
+    }
+
+    public void setUi(Map<String, Object> ui) {
+        this.ui = ui;
+    }
+    public String getEventId() { return eventId; }
+    public void setEventId(String eventId) { this.eventId = eventId; }
+    public String getRequestId() { return requestId; }
+    public void setRequestId(String requestId) { this.requestId = requestId; }
+    public String getQuestionnaireId() { return questionnaireId; }
+    public void setQuestionnaireId(String questionnaireId) { this.questionnaireId = questionnaireId; }
+    public Map<String, Object> getAnswers() { return answers; }
+    public void setAnswers(Map<String, Object> answers) { this.answers = answers; }
+    public String getAction() { return action; }
+    public void setAction(String action) { this.action = action; }
+    public Boolean getReadyForStructuring() { return readyForStructuring; }
+    public void setReadyForStructuring(Boolean readyForStructuring) { this.readyForStructuring = readyForStructuring; }
+    public List<Map<String, Object>> getDiscoveryQuestions() { return discoveryQuestions; }
+    public void setDiscoveryQuestions(List<Map<String, Object>> discoveryQuestions) { this.discoveryQuestions = discoveryQuestions; }
+    public List<Map<String, Object>> getDimensions() { return dimensions; }
+    public void setDimensions(List<Map<String, Object>> dimensions) { this.dimensions = dimensions; }
+    public String getChatPhase() { return chatPhase; }
+    public void setChatPhase(String chatPhase) { this.chatPhase = chatPhase; }
 }

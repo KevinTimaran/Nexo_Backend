@@ -72,12 +72,15 @@ public class ProjectController {
     }
 
     @PutMapping("/{id}/workspace")
-    public ResponseEntity<Map<String, Object>> saveWorkspace(@PathVariable String id, @RequestBody UpdateWorkspaceRequest request) {
-        projectService.saveWorkspace(id, request.getMap(), request.getMessages());
-        Map<String, Object> resp = new HashMap<>();
-        resp.put("success", true);
-        resp.put("timestamp", Instant.now().toString());
-        return ResponseEntity.ok(resp);
+    public ResponseEntity<?> saveWorkspace(@PathVariable String id, @RequestBody UpdateWorkspaceRequest request) {
+        try {
+            Workspace saved = projectService.saveWorkspace(id, request);
+            return saved == null ? ResponseEntity.notFound().build() : ResponseEntity.ok(saved);
+        } catch (ProjectService.RevisionConflictException conflict) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(conflict.getCurrent());
+        } catch (IllegalArgumentException invalid) {
+            return ResponseEntity.badRequest().body(Map.of("error", invalid.getMessage()));
+        }
     }
 
     @PostMapping("/{id}/documents/generate")
