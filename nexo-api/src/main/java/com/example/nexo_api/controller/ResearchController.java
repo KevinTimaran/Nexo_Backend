@@ -7,7 +7,6 @@ import java.time.Instant;
 import java.util.*;
 
 @RestController
-@CrossOrigin(origins = "*")
 @RequestMapping({"/api/v1/research", "/research"})
 public class ResearchController {
 
