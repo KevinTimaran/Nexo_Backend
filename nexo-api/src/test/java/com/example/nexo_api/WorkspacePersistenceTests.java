@@ -14,10 +14,10 @@ class WorkspacePersistenceTests {
     @Test void revisionIdempotencyAndRestart() {
         Path file = directory.resolve("nexo.json");
         ProjectService first = new ProjectService(file);
-        first.initSeedData();
+        first.init();
         NewProjectRequest input = new NewProjectRequest();
         input.setName("Ferretería local");
-        Project project = first.createProject(input);
+        Project project = first.createProject("user-a", input);
         UpdateWorkspaceRequest update = new UpdateWorkspaceRequest();
         update.setExpectedRevision(0L);
         update.setOperationId("operation-1");
@@ -30,23 +30,23 @@ class WorkspacePersistenceTests {
         assistant.setDimensions(List.of(Map.of("id", "economic", "label", "Económica")));
         update.setMessages(List.of(user, assistant));
         update.setDiscovery(Map.of("lifecycle", "generated", "generatedDefinitionVersion", "v-1", "tombstones", List.of("deleted-node")));
-        Workspace saved = first.saveWorkspace(project.getId(), update);
+        Workspace saved = first.saveWorkspace("user-a", project.getId(), update);
         assertEquals(1, saved.getRevision());
-        assertEquals(1, first.saveWorkspace(project.getId(), update).getRevision());
+        assertEquals(1, first.saveWorkspace("user-a", project.getId(), update).getRevision());
         UpdateWorkspaceRequest stale = new UpdateWorkspaceRequest();
         stale.setExpectedRevision(0L);
         stale.setOperationId("operation-2");
-        assertThrows(ProjectService.RevisionConflictException.class, () -> first.saveWorkspace(project.getId(), stale));
+        assertThrows(ProjectService.RevisionConflictException.class, () -> first.saveWorkspace("user-a", project.getId(), stale));
 
         ProjectService restarted = new ProjectService(file);
-        restarted.initSeedData();
-        Workspace loaded = restarted.getWorkspace(project.getId());
+        restarted.init();
+        Workspace loaded = restarted.getWorkspace("user-a", project.getId());
         assertNotNull(loaded);
         assertEquals(1, loaded.getRevision());
         assertEquals("generated", loaded.getDiscovery().get("lifecycle"));
         assertEquals("Vender materiales a vecinos", loaded.getMessages().get(0).getText());
         assertEquals("site-2", loaded.getMessages().get(1).getUi().get("selectedOptionId"));
         assertEquals("economic", loaded.getMessages().get(1).getDimensions().get(0).get("id"));
-        assertEquals(1, restarted.saveWorkspace(project.getId(), update).getRevision());
+        assertEquals(1, restarted.saveWorkspace("user-a", project.getId(), update).getRevision());
     }
 }
