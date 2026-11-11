@@ -8,7 +8,6 @@ import java.time.LocalDate;
 import java.util.*;
 
 @RestController
-@CrossOrigin(origins = "*")
 @RequestMapping({"/api/v1/ai", "/ai"})
 public class AIController {
 
