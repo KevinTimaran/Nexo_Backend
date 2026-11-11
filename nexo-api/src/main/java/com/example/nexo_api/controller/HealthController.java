@@ -1,5 +1,7 @@
 package com.example.nexo_api.controller;
 
+import com.example.nexo_api.service.ProjectService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -10,9 +12,11 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestController
-@CrossOrigin(origins = "*")
 @RequestMapping({"/api/v1", ""})
 public class HealthController {
+
+    @Autowired(required = false)
+    private ProjectService projects;
 
     @GetMapping({"/health", "/status"})
     public ResponseEntity<Map<String, Object>> getHealth() {
@@ -29,6 +33,11 @@ public class HealthController {
         // Keep the health contract honest until a real integration is configured and probed.
         neo4j.put("status", "NOT_CONFIGURED");
         components.put("neo4j", neo4j);
+        if (projects != null) {
+            Map<String, Object> storage = new HashMap<>();
+            storage.put("backend", projects.storageDescription());
+            components.put("storage", storage);
+        }
         body.put("components", components);
 
         return ResponseEntity.ok(body);
