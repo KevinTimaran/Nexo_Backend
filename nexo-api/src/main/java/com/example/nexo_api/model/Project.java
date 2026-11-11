@@ -11,6 +11,8 @@ public class Project {
     private String icon;   // "lightbulb", "leaf", "scale", "rocket", "book", "compass"
     private String updatedAt;
     private int nodeCount;
+    /** Id of the owning account (JWT subject). Set by the server, never taken from a request body. */
+    private String ownerId;
 
     public Project() {}
 
@@ -71,6 +73,10 @@ public class Project {
     public void setUpdatedAt(String updatedAt) {
         this.updatedAt = updatedAt;
     }
+
+    public String getOwnerId() { return ownerId; }
+
+    public void setOwnerId(String ownerId) { this.ownerId = ownerId; }
 
     public int getNodeCount() {
         return nodeCount;
